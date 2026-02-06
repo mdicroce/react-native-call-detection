@@ -7,9 +7,9 @@ import {
   Platform,
   PermissionsAndroid
 } from 'react-native'
-export const permissionDenied = 'PERMISSION DENIED'
+import BatchedBridge from 'react-native/Libraries/BatchedBridge/BatchedBridge';
 
-const BatchedBridge = require('react-native/Libraries/BatchedBridge/BatchedBridge')
+export const permissionDenied = 'PERMISSION DENIED'
 
 const NativeCallDetector = NativeModules.CallDetectionManager
 const NativeCallDetectorAndroid = NativeModules.CallDetectionManagerAndroid
