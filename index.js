@@ -7,15 +7,15 @@ import {
   Platform,
   PermissionsAndroid
 } from 'react-native'
-import BatchedBridge from 'react-native/Libraries/BatchedBridge/BatchedBridge';
-
 export const permissionDenied = 'PERMISSION DENIED'
+
+
 
 const NativeCallDetector = NativeModules.CallDetectionManager
 const NativeCallDetectorAndroid = NativeModules.CallDetectionManagerAndroid
 
 var CallStateUpdateActionModule = require('./CallStateUpdateActionModule')
-BatchedBridge.registerCallableModule('CallStateUpdateActionModule', CallStateUpdateActionModule)
+// BatchedBridge.registerCallableModule('CallStateUpdateActionModule', CallStateUpdateActionModule)
 
 // https://stackoverflow.com/questions/13154445/how-to-get-phone-number-from-an-incoming-call : Amjad Alwareh's answer.
 const requestPermissionsAndroid = (permissionMessage) => {
@@ -47,7 +47,6 @@ class CallDetectorManager {
     else {
       if (NativeCallDetectorAndroid) {
         if (readPhoneNumberAndroid) {
-
           requestPermissionsAndroid(permissionMessage)
             .then((permissionGrantedReadState) => {
               if (!permissionGrantedReadState) {
@@ -55,11 +54,23 @@ class CallDetectorManager {
               }
             })
             .catch(permissionDeniedCallback)
-
         }
-        NativeCallDetectorAndroid.startListener();
+        NativeCallDetectorAndroid.startListener()
+        
+        // Use NativeEventEmitter for Android too
+        this.subscription = new NativeEventEmitter(NativeCallDetectorAndroid)
+        this.subscription.addListener('PhoneCallStateUpdate', (event) => {
+            // Android might send the event differently, so we normalize the callback
+            // The Java module sends: {state: '...', phoneNumber: '...'}
+            // The callback expects (event, phoneNumber) which matches "state"
+            if (event && event.state) {
+                callback(event.state, event.phoneNumber)
+            } else {
+                // Fallback for older patterns just in case
+                callback(event)
+            }
+        })
       }
-      CallStateUpdateActionModule.callback = callback
     }
   }
 
