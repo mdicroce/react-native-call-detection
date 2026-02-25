@@ -59,25 +59,18 @@ public class CallDetectionManagerModule
     private void checkAudioMode() {
         if (audioManager == null) return;
         int currentMode = audioManager.getMode();
-        
-        // Si el modo cambió desde la última vez que chequeamos
-        if (currentMode != previousAudioMode) {
-            
-            if (currentMode == AudioManager.MODE_IN_COMMUNICATION || currentMode == AudioManager.MODE_IN_CALL) {
-                // DETECTADO: Llamada VoIP (Whatsapp, Zoom, Meet, etc.)
-                // Puedes reutilizar "Offhook" o crear un nuevo estado "VoIP"
-                sendEvent("PhoneCallStateUpdate", "Offhook", "VoIP Call"); 
-                wasAppInOffHook = true; 
-                
-            } else if (currentMode == AudioManager.MODE_NORMAL) {
-                // Se colgó la llamada VoIP
-                if (wasAppInOffHook) {
-                    sendEvent("PhoneCallStateUpdate", "Disconnected", "VoIP Call");
-                    wasAppInOffHook = false;
-                }
-            }
-            
-            previousAudioMode = currentMode;
+
+        boolean isVoipCallActive = currentMode == AudioManager.MODE_IN_COMMUNICATION || currentMode == AudioManager.MODE_IN_CALL;
+
+        // Si hay una llamada VoIP y la app no lo sabía, es una nueva llamada.
+        if (isVoipCallActive && !wasAppInOffHook) {
+            sendEvent("PhoneCallStateUpdate", "Offhook", "VoIP Call");
+            wasAppInOffHook = true;
+        } 
+        // Si no hay llamada VoIP y la app pensaba que sí, la llamada terminó.
+        else if (!isVoipCallActive && wasAppInOffHook) {
+            sendEvent("PhoneCallStateUpdate", "Disconnected", "VoIP Call");
+            wasAppInOffHook = false;
         }
     }
 
@@ -131,6 +124,9 @@ public class CallDetectionManagerModule
                 PhoneStateListener.LISTEN_CALL_STATE);
 
         isListenerRegistered = true;
+        if (getReactApplicationContext().getLifecycleState() == com.facebook.react.common.LifecycleState.RESUMED) {
+            handler.post(runnable);
+        }
     }
 
 
@@ -163,6 +159,24 @@ public class CallDetectionManagerModule
         }
     }
 
+    @Override
+    public void onActivityResumed(Activity activity) {
+        // 3. La app ha vuelto al primer plano. Inicia el sondeo.
+        if (isListenerRegistered && handler != null && runnable != null) {
+            // Elimina cualquier callback pendiente para evitar duplicados y empieza de nuevo.
+            handler.removeCallbacks(runnable);
+            handler.post(runnable);
+        }
+    }
+
+    @Override
+    public void onActivityPaused(Activity activity) {
+        // 4. La app se va a segundo plano. Detén el sondeo para ahorrar batería.
+        if (handler != null && runnable != null) {
+            handler.removeCallbacks(runnable);
+        }
+    }
+
     /**
      * @return a map of constants this module exports to JS. Supports JSON types.
      */
@@ -184,16 +198,6 @@ public class CallDetectionManagerModule
 
     @Override
     public void onActivityStarted(Activity activity) {
-
-    }
-
-    @Override
-    public void onActivityResumed(Activity activity) {
-
-    }
-
-    @Override
-    public void onActivityPaused(Activity activity) {
 
     }
 
