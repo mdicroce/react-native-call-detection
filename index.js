@@ -15,7 +15,6 @@ const NativeCallDetector = NativeModules.CallDetectionManager
 const NativeCallDetectorAndroid = NativeModules.CallDetectionManagerAndroid
 
 var CallStateUpdateActionModule = require('./CallStateUpdateActionModule')
-// BatchedBridge.registerCallableModule('CallStateUpdateActionModule', CallStateUpdateActionModule)
 
 // https://stackoverflow.com/questions/13154445/how-to-get-phone-number-from-an-incoming-call : Amjad Alwareh's answer.
 const requestPermissionsAndroid = (permissionMessage) => {
@@ -46,15 +45,6 @@ class CallDetectorManager {
     }
     else {
       if (NativeCallDetectorAndroid) {
-        if (readPhoneNumberAndroid) {
-          requestPermissionsAndroid(permissionMessage)
-            .then((permissionGrantedReadState) => {
-              if (!permissionGrantedReadState) {
-                permissionDeniedCallback(permissionDenied)
-              }
-            })
-            .catch(permissionDeniedCallback)
-        }
         NativeCallDetectorAndroid.startListener()
         
         // Use NativeEventEmitter for Android too
